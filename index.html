@@ -157,6 +157,7 @@
     }
 
     .field {
+      position: relative;
       display: grid;
       gap: 6px;
     }
@@ -521,6 +522,55 @@
       color: var(--stone-600);
     }
 
+    .suggestions {
+      position: absolute;
+      z-index: 40;
+      top: calc(100% + 2px);
+      left: 0;
+      right: 0;
+      display: none;
+      overflow: hidden;
+      border: 1px solid var(--amber-200);
+      border-radius: 6px;
+      background: var(--white);
+      box-shadow: var(--shadow);
+    }
+
+    .suggestions.open {
+      display: block;
+    }
+
+    .suggestion-item {
+      width: 100%;
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border: 0;
+      border-bottom: 1px solid var(--amber-100);
+      background: var(--white);
+      color: var(--stone-900);
+      padding: 8px 12px;
+      text-align: left;
+    }
+
+    .suggestion-item:last-child {
+      border-bottom: 0;
+    }
+
+    .suggestion-item:hover,
+    .suggestion-item:focus {
+      background: var(--amber-50);
+      outline: none;
+    }
+
+    .suggestion-kana {
+      color: var(--stone-500);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
     .hidden {
       display: none !important;
     }
@@ -692,8 +742,8 @@
         </div>
         <div class="field">
           <label for="nameInput">利用者名</label>
-          <input id="nameInput" type="text" autocomplete="off" list="userNameCandidates" placeholder="利用者名を入力" required>
-          <datalist id="userNameCandidates"></datalist>
+          <input id="nameInput" type="text" autocomplete="off" placeholder="利用者名を入力" required>
+          <div class="suggestions" id="userNameSuggestions"></div>
         </div>
         <div class="field">
           <label for="typeInput">変更種別</label>
@@ -781,7 +831,7 @@
       typeInput: document.querySelector("#typeInput"),
       detailInput: document.querySelector("#detailInput"),
       noteInput: document.querySelector("#noteInput"),
-      userNameCandidates: document.querySelector("#userNameCandidates"),
+      userNameSuggestions: document.querySelector("#userNameSuggestions"),
       cancelFormButton: document.querySelector("#cancelFormButton"),
       filterOpenOnly: document.querySelector("#filterOpenOnly"),
       filterFutureOnly: document.querySelector("#filterFutureOnly"),
@@ -863,7 +913,7 @@
 
     async function loadStudents() {
       try {
-        students = await supabaseTableRequest(STUDENTS_API, "?select=name&active=eq.true&order=name.asc", {
+        students = await supabaseTableRequest(STUDENTS_API, "?select=name,kana&active=eq.true&order=kana.asc", {
           headers: {
             Prefer: ""
           }
@@ -978,24 +1028,62 @@
       elements.todayCount.textContent = contacts.filter((contact) => contact.date === today).length;
     }
 
-    function renderUserNameCandidates() {
-      const names = [...new Set(
-        [
-          ...students.map((student) => student.name),
-          ...contacts.map((contact) => contact.user_name)
-        ]
-          .map((name) => String(name ?? "").trim())
-          .filter(Boolean)
-      )].sort((a, b) => a.localeCompare(b, "ja"));
+    function getUserNameCandidates() {
+      const candidateMap = new Map();
 
-      elements.userNameCandidates.innerHTML = names
-        .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+      students.forEach((student) => {
+        const name = String(student.name ?? "").trim();
+        if (name) candidateMap.set(name, String(student.kana ?? "").trim());
+      });
+
+      contacts.forEach((contact) => {
+        const name = String(contact.user_name ?? "").trim();
+        if (name && !candidateMap.has(name)) candidateMap.set(name, "");
+      });
+
+      return [...candidateMap.entries()]
+        .map(([name, kana]) => ({ name, kana }))
+        .sort((a, b) => (a.kana || a.name).localeCompare(b.kana || b.name, "ja"));
+    }
+
+    function renderUserNameSuggestions() {
+      const query = elements.nameInput.value.trim().toLowerCase();
+      if (!query) {
+        closeUserNameSuggestions();
+        return;
+      }
+
+      const matched = getUserNameCandidates()
+        .filter((candidate) => {
+          const name = candidate.name.toLowerCase();
+          const kana = candidate.kana.toLowerCase();
+          return name.includes(query) || kana.includes(query);
+        })
+        .slice(0, 8);
+
+      if (matched.length === 0) {
+        closeUserNameSuggestions();
+        return;
+      }
+
+      elements.userNameSuggestions.innerHTML = matched
+        .map((candidate) => `
+          <button class="suggestion-item" type="button" data-name="${escapeHtml(candidate.name)}">
+            <span>${escapeHtml(candidate.name)}</span>
+            ${candidate.kana ? `<span class="suggestion-kana">${escapeHtml(candidate.kana)}</span>` : ""}
+          </button>
+        `)
         .join("");
+      elements.userNameSuggestions.classList.add("open");
+    }
+
+    function closeUserNameSuggestions() {
+      elements.userNameSuggestions.classList.remove("open");
+      elements.userNameSuggestions.innerHTML = "";
     }
 
     function renderList() {
       renderSummary();
-      renderUserNameCandidates();
       const filtered = getFilteredContacts();
       if (filtered.length === 0) {
         elements.list.innerHTML = `
@@ -1218,6 +1306,15 @@
     elements.newButton.addEventListener("click", () => openForm());
     elements.cancelFormButton.addEventListener("click", closeForm);
     elements.form.addEventListener("submit", handleSubmit);
+    elements.nameInput.addEventListener("input", renderUserNameSuggestions);
+    elements.nameInput.addEventListener("focus", renderUserNameSuggestions);
+    elements.userNameSuggestions.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-name]");
+      if (!button) return;
+      elements.nameInput.value = button.dataset.name;
+      closeUserNameSuggestions();
+      elements.nameInput.focus();
+    });
     elements.typeInput.addEventListener("change", updateDetailPlaceholder);
     elements.list.addEventListener("click", handleListClick);
     elements.list.addEventListener("change", handleListClick);
@@ -1247,8 +1344,14 @@
     elements.importFile.addEventListener("change", importData);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
+        closeUserNameSuggestions();
         closeForm();
         closeDelete();
+      }
+    });
+    document.addEventListener("click", (event) => {
+      if (!event.target.closest("#nameInput") && !event.target.closest("#userNameSuggestions")) {
+        closeUserNameSuggestions();
       }
     });
 
