@@ -667,7 +667,7 @@
       </div>
       <div class="field">
         <label for="filterName">利用者名検索</label>
-        <input id="filterName" type="search" placeholder="例: 田中">
+        <input id="filterName" type="search" placeholder="利用者名で検索">
       </div>
     </section>
 
@@ -692,7 +692,7 @@
         </div>
         <div class="field">
           <label for="nameInput">利用者名</label>
-          <input id="nameInput" type="text" autocomplete="off" list="userNameCandidates" placeholder="例: 田中ひなた" required>
+          <input id="nameInput" type="text" autocomplete="off" list="userNameCandidates" placeholder="利用者名を入力" required>
           <datalist id="userNameCandidates"></datalist>
         </div>
         <div class="field">
@@ -711,7 +711,7 @@
         </div>
         <div class="field">
           <label for="noteInput">備考</label>
-          <textarea id="noteInput" placeholder="例: 保護者へ折り返し済み"></textarea>
+          <textarea id="noteInput" placeholder="必要な補足があれば入力"></textarea>
         </div>
         <div class="btn-row">
           <button class="btn btn-ghost" id="cancelFormButton" type="button">キャンセル</button>
@@ -736,31 +736,33 @@
     const SUPABASE_URL = "https://ewvyiivmfdgjfrwecvem.supabase.co";
     const SUPABASE_KEY = "sb_publishable_7NpL9a7UnSKWuS2nlGLZpg_FlZ4m_QE";
     const CONTACTS_API = `${SUPABASE_URL}/rest/v1/contacts`;
+    const STUDENTS_API = `${SUPABASE_URL}/rest/v1/students`;
     const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
     const typeMeta = {
       absence: {
         label: "欠席",
         badgeClass: "absence",
-        placeholder: "例: 発熱のため終日欠席"
+        placeholder: "欠席理由などを入力"
       },
       time_change: {
         label: "時間変更",
         badgeClass: "",
-        placeholder: "例: 16:00から17:00に変更"
+        placeholder: "変更前後の時間を入力"
       },
       transport: {
         label: "送迎の有無・場所",
         badgeClass: "transport",
-        placeholder: "例: 本日は祖母宅（○○町3-2）へ送迎"
+        placeholder: "送迎の有無や場所を入力"
       },
       extra_use: {
         label: "追加利用",
         badgeClass: "",
-        placeholder: "例: 金曜は利用なしだが追加で利用"
+        placeholder: "追加利用の内容を入力"
       }
     };
 
     let contacts = [];
+    let students = [];
     let contactToDelete = null;
 
     const elements = {
@@ -835,7 +837,11 @@
     }
 
     async function supabaseRequest(path = "", options = {}) {
-      const response = await fetch(`${CONTACTS_API}${path}`, {
+      return supabaseTableRequest(CONTACTS_API, path, options);
+    }
+
+    async function supabaseTableRequest(apiUrl, path = "", options = {}) {
+      const response = await fetch(`${apiUrl}${path}`, {
         ...options,
         headers: {
           apikey: SUPABASE_KEY,
@@ -855,9 +861,23 @@
       return response.json();
     }
 
+    async function loadStudents() {
+      try {
+        students = await supabaseTableRequest(STUDENTS_API, "?select=name&active=eq.true&order=name.asc", {
+          headers: {
+            Prefer: ""
+          }
+        });
+      } catch (error) {
+        students = [];
+        console.info("students table is not available yet; using contact names only.");
+      }
+    }
+
     async function loadContacts() {
       try {
         elements.list.innerHTML = `<div class="empty-state"><p>読み込み中です</p></div>`;
+        await loadStudents();
         contacts = await supabaseRequest("?select=*&order=date.asc,created_at.asc");
       } catch (error) {
         contacts = [];
@@ -960,8 +980,11 @@
 
     function renderUserNameCandidates() {
       const names = [...new Set(
-        contacts
-          .map((contact) => String(contact.user_name ?? "").trim())
+        [
+          ...students.map((student) => student.name),
+          ...contacts.map((contact) => contact.user_name)
+        ]
+          .map((name) => String(name ?? "").trim())
           .filter(Boolean)
       )].sort((a, b) => a.localeCompare(b, "ja"));
 
