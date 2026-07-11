@@ -122,15 +122,15 @@
     .summary-card,
     .filter-bar,
     .contact-card,
-    .empty-state,
-    .notice {
+    .empty-state {
       background: var(--white);
       border: 1px solid var(--amber-100);
       border-radius: 8px;
+      box-shadow: 0 10px 28px rgba(68, 64, 60, 0.05);
     }
 
     .summary-card {
-      padding: 16px 18px;
+      padding: 18px 22px;
     }
 
     .summary-label {
@@ -148,7 +148,7 @@
     }
 
     .filter-bar {
-      padding: 18px;
+      padding: 20px 22px;
       display: grid;
       grid-template-columns: 1fr 1fr 180px minmax(220px, 1.2fr);
       gap: 14px;
@@ -560,7 +560,8 @@
     }
 
     .suggestion-item:hover,
-    .suggestion-item:focus {
+    .suggestion-item:focus,
+    .suggestion-item.active {
       background: var(--amber-50);
       outline: none;
     }
@@ -681,10 +682,6 @@
   </header>
 
   <main class="main">
-    <div class="notice">
-      <strong>Supabase連携版:</strong> PC・スマホから同じデータを確認できます。エクスポート/インポートはバックアップ用に使えます。
-    </div>
-
     <section class="summary-row" aria-label="連絡サマリー">
       <article class="summary-card">
         <p class="summary-label">未対応件数</p>
@@ -742,8 +739,8 @@
         </div>
         <div class="field">
           <label for="nameInput">利用者名</label>
-          <input id="nameInput" type="text" autocomplete="off" placeholder="利用者名を入力" required>
-          <div class="suggestions" id="userNameSuggestions"></div>
+          <input id="nameInput" type="text" autocomplete="off" placeholder="利用者名を入力" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="userNameSuggestions" required>
+          <div class="suggestions" id="userNameSuggestions" role="listbox"></div>
         </div>
         <div class="field">
           <label for="typeInput">変更種別</label>
@@ -814,6 +811,7 @@
     let contacts = [];
     let students = [];
     let contactToDelete = null;
+    let activeSuggestionIndex = -1;
 
     const elements = {
       openCount: document.querySelector("#openCount"),
@@ -1067,19 +1065,79 @@
       }
 
       elements.userNameSuggestions.innerHTML = matched
-        .map((candidate) => `
-          <button class="suggestion-item" type="button" data-name="${escapeHtml(candidate.name)}">
+        .map((candidate, index) => `
+          <button class="suggestion-item" type="button" data-name="${escapeHtml(candidate.name)}" data-index="${index}" id="userNameSuggestion-${index}" role="option">
             <span>${escapeHtml(candidate.name)}</span>
             ${candidate.kana ? `<span class="suggestion-kana">${escapeHtml(candidate.kana)}</span>` : ""}
           </button>
         `)
         .join("");
+      activeSuggestionIndex = -1;
+      elements.nameInput.setAttribute("aria-expanded", "true");
+      elements.nameInput.removeAttribute("aria-activedescendant");
       elements.userNameSuggestions.classList.add("open");
     }
 
     function closeUserNameSuggestions() {
       elements.userNameSuggestions.classList.remove("open");
       elements.userNameSuggestions.innerHTML = "";
+      activeSuggestionIndex = -1;
+      elements.nameInput.setAttribute("aria-expanded", "false");
+      elements.nameInput.removeAttribute("aria-activedescendant");
+    }
+
+    function getSuggestionButtons() {
+      return [...elements.userNameSuggestions.querySelectorAll(".suggestion-item")];
+    }
+
+    function setActiveSuggestion(index) {
+      const buttons = getSuggestionButtons();
+      if (buttons.length === 0) return;
+
+      activeSuggestionIndex = (index + buttons.length) % buttons.length;
+      buttons.forEach((button, buttonIndex) => {
+        button.classList.toggle("active", buttonIndex === activeSuggestionIndex);
+        button.setAttribute("aria-selected", buttonIndex === activeSuggestionIndex ? "true" : "false");
+      });
+
+      const activeButton = buttons[activeSuggestionIndex];
+      elements.nameInput.setAttribute("aria-activedescendant", activeButton.id);
+      activeButton.scrollIntoView({ block: "nearest" });
+    }
+
+    function chooseActiveSuggestion() {
+      const buttons = getSuggestionButtons();
+      if (buttons.length === 0) return false;
+
+      const selectedIndex = activeSuggestionIndex >= 0 ? activeSuggestionIndex : 0;
+      elements.nameInput.value = buttons[selectedIndex].dataset.name;
+      closeUserNameSuggestions();
+      return true;
+    }
+
+    function handleNameInputKeydown(event) {
+      const suggestionsOpen = elements.userNameSuggestions.classList.contains("open");
+
+      if (event.key === "ArrowDown") {
+        if (!suggestionsOpen) renderUserNameSuggestions();
+        setActiveSuggestion(activeSuggestionIndex + 1);
+        event.preventDefault();
+      }
+
+      if (event.key === "ArrowUp") {
+        if (!suggestionsOpen) renderUserNameSuggestions();
+        setActiveSuggestion(activeSuggestionIndex - 1);
+        event.preventDefault();
+      }
+
+      if (event.key === "Enter" && suggestionsOpen) {
+        if (chooseActiveSuggestion()) event.preventDefault();
+      }
+
+      if (event.key === "Escape" && suggestionsOpen) {
+        closeUserNameSuggestions();
+        event.preventDefault();
+      }
     }
 
     function renderList() {
@@ -1308,6 +1366,7 @@
     elements.form.addEventListener("submit", handleSubmit);
     elements.nameInput.addEventListener("input", renderUserNameSuggestions);
     elements.nameInput.addEventListener("focus", renderUserNameSuggestions);
+    elements.nameInput.addEventListener("keydown", handleNameInputKeydown);
     elements.userNameSuggestions.addEventListener("click", (event) => {
       const button = event.target.closest("[data-name]");
       if (!button) return;
