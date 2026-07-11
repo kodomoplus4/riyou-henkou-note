@@ -1,0 +1,1186 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>利用変更連絡ノート</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --stone-50: #fafaf9;
+      --stone-100: #f5f5f4;
+      --stone-200: #e7e5e4;
+      --stone-500: #78716c;
+      --stone-600: #57534e;
+      --stone-700: #44403c;
+      --stone-900: #1c1917;
+      --amber-50: #fffbeb;
+      --amber-100: #fef3c7;
+      --amber-200: #fde68a;
+      --amber-800: #92400e;
+      --rose-50: #fff1f2;
+      --rose-700: #be123c;
+      --rose-800: #9f1239;
+      --rose-900: #881337;
+      --red-50: #fef2f2;
+      --red-200: #fecaca;
+      --red-800: #991b1b;
+      --emerald-50: #ecfdf5;
+      --emerald-200: #a7f3d0;
+      --emerald-800: #065f46;
+      --white: #ffffff;
+      --shadow: 0 16px 45px rgba(68, 64, 60, 0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--stone-50);
+      color: var(--stone-900);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", "YuMincho", "Noto Serif JP", Georgia, serif;
+      line-height: 1.7;
+    }
+
+    button, input, select, textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(255, 255, 255, 0.96);
+      border-bottom: 1px solid var(--amber-100);
+      backdrop-filter: blur(10px);
+    }
+
+    .header-inner,
+    .main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding-inline: 24px;
+    }
+
+    .header-inner {
+      min-height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: inline-grid;
+      place-items: center;
+      flex: 0 0 auto;
+      background: var(--rose-900);
+      color: var(--amber-50);
+    }
+
+    .logo svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(20px, 4vw, 26px);
+      font-weight: 600;
+      letter-spacing: 0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .main {
+      padding-block: 36px 56px;
+    }
+
+    .summary-row {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-card,
+    .filter-bar,
+    .contact-card,
+    .empty-state,
+    .notice {
+      background: var(--white);
+      border: 1px solid var(--amber-100);
+      border-radius: 8px;
+    }
+
+    .summary-card {
+      padding: 16px 18px;
+    }
+
+    .summary-label {
+      margin: 0;
+      color: var(--stone-600);
+      font-size: 14px;
+    }
+
+    .summary-value {
+      margin: 4px 0 0;
+      font-variant-numeric: tabular-nums;
+      font-size: 28px;
+      line-height: 1.2;
+      color: var(--rose-900);
+    }
+
+    .filter-bar {
+      padding: 18px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 180px minmax(220px, 1.2fr);
+      gap: 14px;
+      align-items: end;
+      margin-bottom: 32px;
+    }
+
+    .field {
+      display: grid;
+      gap: 6px;
+    }
+
+    label,
+    .field-label {
+      color: var(--stone-600);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      border: 1px solid var(--amber-200);
+      border-radius: 6px;
+      background: var(--white);
+      color: var(--stone-900);
+      padding: 0 12px;
+      outline: none;
+      transition: border-color 0.2s ease-out, box-shadow 0.2s ease-out;
+    }
+
+    input,
+    select {
+      min-height: 44px;
+    }
+
+    textarea {
+      min-height: 108px;
+      padding-block: 10px;
+      resize: vertical;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: var(--rose-800);
+      box-shadow: 0 0 0 3px rgba(159, 18, 57, 0.14);
+    }
+
+    .switch-field {
+      min-height: 44px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border: 1px solid var(--amber-200);
+      border-radius: 6px;
+      background: var(--white);
+      color: var(--stone-700);
+    }
+
+    input[type="checkbox"] {
+      width: 20px;
+      height: 20px;
+      min-height: auto;
+      accent-color: var(--rose-800);
+      flex: 0 0 auto;
+    }
+
+    .btn {
+      min-height: 44px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      padding: 0 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, transform 0.08s ease-out;
+    }
+
+    .btn:active {
+      transform: scale(0.99);
+    }
+
+    .btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn-primary {
+      background: var(--rose-800);
+      color: var(--amber-50);
+    }
+
+    .btn-primary:hover {
+      background: var(--rose-700);
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: var(--rose-900);
+      border-color: var(--rose-900);
+    }
+
+    .btn-secondary:hover {
+      background: var(--rose-50);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--stone-600);
+    }
+
+    .btn-ghost:hover {
+      background: var(--amber-50);
+      color: var(--rose-900);
+    }
+
+    .btn-danger {
+      background: var(--red-800);
+      color: white;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 18px;
+    }
+
+    .tools-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: flex-end;
+      margin: -16px 0 24px;
+    }
+
+    .date-group {
+      margin-top: 28px;
+    }
+
+    .date-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 12px;
+      padding-inline: 2px;
+    }
+
+    .date-header h2 {
+      margin: 0;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .date-header span {
+      color: var(--stone-500);
+      font-size: 14px;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    .contact-card {
+      padding: 20px;
+      transition: border-color 0.2s ease-out, background-color 0.2s ease-out;
+      animation: fade-in 0.3s ease-out both;
+    }
+
+    .contact-card:hover {
+      border-color: var(--amber-200);
+    }
+
+    .contact-card.done {
+      background: rgba(236, 253, 245, 0.42);
+      border-color: var(--emerald-200);
+    }
+
+    .contact-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .contact-title {
+      min-width: 0;
+    }
+
+    .contact-title h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .contact-actions {
+      display: inline-flex;
+      gap: 4px;
+      flex: 0 0 auto;
+    }
+
+    .icon-btn {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      border-radius: 4px;
+      border: 1px solid var(--amber-200);
+      background: var(--amber-100);
+      color: var(--rose-900);
+      padding: 2px 8px;
+      font-size: 12px;
+      line-height: 1.3;
+      margin-top: 6px;
+    }
+
+    .badge.absence {
+      background: var(--red-50);
+      border-color: var(--red-200);
+      color: var(--red-800);
+    }
+
+    .badge.transport {
+      background: var(--amber-50);
+      border-color: var(--amber-200);
+      color: var(--amber-800);
+    }
+
+    .detail {
+      margin: 0 0 10px;
+      color: var(--stone-900);
+      overflow-wrap: anywhere;
+    }
+
+    .note {
+      margin: 0 0 14px;
+      color: var(--stone-600);
+      font-size: 14px;
+      overflow-wrap: anywhere;
+    }
+
+    .meta {
+      color: var(--stone-500);
+      font-size: 13px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .done-row {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--amber-100);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .done-row label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--stone-700);
+      min-height: 44px;
+    }
+
+    .done-text {
+      color: var(--emerald-800);
+      font-size: 13px;
+    }
+
+    .empty-state {
+      padding: 42px 24px;
+      text-align: center;
+      color: var(--stone-500);
+    }
+
+    .empty-state svg {
+      width: 34px;
+      height: 34px;
+      color: var(--rose-900);
+    }
+
+    .notice {
+      padding: 12px 14px;
+      margin-bottom: 18px;
+      color: var(--stone-600);
+      font-size: 14px;
+    }
+
+    .notice strong {
+      color: var(--rose-900);
+    }
+
+    .dialog-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 30;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      background: rgba(28, 25, 23, 0.3);
+    }
+
+    .dialog-backdrop.open {
+      display: flex;
+    }
+
+    .dialog-panel {
+      width: min(100%, 560px);
+      max-height: min(90vh, 820px);
+      overflow: auto;
+      background: var(--white);
+      border: 1px solid var(--amber-100);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      padding: 22px;
+    }
+
+    .dialog-title {
+      margin: 0 0 16px;
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0;
+    }
+
+    .form-grid {
+      display: grid;
+      gap: 14px;
+    }
+
+    .error {
+      display: none;
+      border: 1px solid var(--red-200);
+      background: var(--red-50);
+      color: var(--red-800);
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-bottom: 14px;
+      font-size: 14px;
+    }
+
+    .error.show {
+      display: block;
+    }
+
+    .confirm-text {
+      margin: 0;
+      color: var(--stone-600);
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 860px) {
+      .filter-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .contact-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      .header-inner,
+      .main {
+        padding-inline: 16px;
+      }
+
+      .header-inner {
+        min-height: auto;
+        padding-block: 14px;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .brand {
+        width: 100%;
+      }
+
+      .header-inner .btn {
+        width: 100%;
+      }
+
+      h1 {
+        white-space: normal;
+      }
+
+      .summary-row,
+      .filter-bar {
+        grid-template-columns: 1fr;
+      }
+
+      .tools-row {
+        justify-content: stretch;
+      }
+
+      .tools-row .btn {
+        flex: 1 1 140px;
+      }
+
+      .date-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .contact-top {
+        flex-direction: column;
+      }
+
+      .contact-actions {
+        align-self: flex-end;
+      }
+
+      .done-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .dialog-backdrop {
+        padding: 10px;
+        align-items: flex-end;
+      }
+
+      .dialog-panel {
+        max-height: 92vh;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand" aria-label="利用変更連絡ノート">
+        <span class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 20A7 7 0 0 1 4 13c0-6 8-9 16-9 0 8-3 16-9 16Z"></path>
+            <path d="M4 13c3 0 7 0 12-5"></path>
+          </svg>
+        </span>
+        <h1>利用変更連絡ノート</h1>
+      </div>
+      <button class="btn btn-primary" id="newContactButton" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 5v14"></path>
+          <path d="M5 12h14"></path>
+        </svg>
+        新規連絡
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <div class="notice">
+      <strong>Supabase連携版:</strong> PC・スマホから同じデータを確認できます。エクスポート/インポートはバックアップ用に使えます。
+    </div>
+
+    <section class="summary-row" aria-label="連絡サマリー">
+      <article class="summary-card">
+        <p class="summary-label">未対応件数</p>
+        <p class="summary-value" id="openCount">0</p>
+      </article>
+      <article class="summary-card">
+        <p class="summary-label">今日の連絡件数</p>
+        <p class="summary-value" id="todayCount">0</p>
+      </article>
+    </section>
+
+    <section class="filter-bar" aria-label="絞り込み">
+      <label class="switch-field">
+        <input id="filterOpenOnly" type="checkbox">
+        未対応のみ
+      </label>
+      <label class="switch-field">
+        <input id="filterFutureOnly" type="checkbox" checked>
+        今日以降
+      </label>
+      <div class="field">
+        <label for="filterType">変更種別</label>
+        <select id="filterType">
+          <option value="">すべて</option>
+          <option value="absence">欠席</option>
+          <option value="time_change">時間変更</option>
+          <option value="transport">送迎の有無・場所</option>
+          <option value="extra_use">追加利用</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="filterName">利用者名検索</label>
+        <input id="filterName" type="search" placeholder="例: 田中">
+      </div>
+    </section>
+
+    <div class="tools-row" aria-label="データ操作">
+      <button class="btn btn-secondary" id="exportButton" type="button">エクスポート</button>
+      <label class="btn btn-secondary" for="importFile">インポート</label>
+      <input class="hidden" id="importFile" type="file" accept="application/json,.json">
+    </div>
+
+    <section id="contactList" aria-live="polite"></section>
+  </main>
+
+  <div class="dialog-backdrop" id="formDialog" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <div class="dialog-panel">
+      <h2 class="dialog-title" id="formTitle">新規連絡</h2>
+      <div class="error" id="formError"></div>
+      <form id="contactForm" class="form-grid">
+        <input id="contactId" type="hidden">
+        <div class="field">
+          <label for="dateInput">利用日</label>
+          <input id="dateInput" type="date" required>
+        </div>
+        <div class="field">
+          <label for="nameInput">利用者名</label>
+          <input id="nameInput" type="text" autocomplete="off" placeholder="例: 田中ひなた" required>
+        </div>
+        <div class="field">
+          <label for="typeInput">変更種別</label>
+          <select id="typeInput" required>
+            <option value="">選択してください</option>
+            <option value="absence">欠席</option>
+            <option value="time_change">時間変更</option>
+            <option value="transport">送迎の有無・場所</option>
+            <option value="extra_use">追加利用</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="detailInput">変更詳細</label>
+          <textarea id="detailInput" placeholder="変更内容を入力してください"></textarea>
+        </div>
+        <div class="field">
+          <label for="noteInput">備考</label>
+          <textarea id="noteInput" placeholder="例: 保護者へ折り返し済み"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-ghost" id="cancelFormButton" type="button">キャンセル</button>
+          <button class="btn btn-primary" type="submit">保存</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="dialog-backdrop" id="deleteDialog" role="dialog" aria-modal="true" aria-labelledby="deleteTitle">
+    <div class="dialog-panel">
+      <h2 class="dialog-title" id="deleteTitle">連絡を削除しますか</h2>
+      <p class="confirm-text" id="deleteText">この操作は取り消せません。</p>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="cancelDeleteButton" type="button">キャンセル</button>
+        <button class="btn btn-danger" id="confirmDeleteButton" type="button">削除</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ewvyiivmfdgjfrwecvem.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_7NpL9a7UnSKWuS2nlGLZpg_FlZ4m_QE";
+    const CONTACTS_API = `${SUPABASE_URL}/rest/v1/contacts`;
+    const dayLabels = ["日", "月", "火", "水", "木", "金", "土"];
+    const typeMeta = {
+      absence: {
+        label: "欠席",
+        badgeClass: "absence",
+        placeholder: "例: 発熱のため終日欠席"
+      },
+      time_change: {
+        label: "時間変更",
+        badgeClass: "",
+        placeholder: "例: 16:00から17:00に変更"
+      },
+      transport: {
+        label: "送迎の有無・場所",
+        badgeClass: "transport",
+        placeholder: "例: 本日は祖母宅（○○町3-2）へ送迎"
+      },
+      extra_use: {
+        label: "追加利用",
+        badgeClass: "",
+        placeholder: "例: 金曜は利用なしだが追加で利用"
+      }
+    };
+
+    let contacts = [];
+    let contactToDelete = null;
+
+    const elements = {
+      openCount: document.querySelector("#openCount"),
+      todayCount: document.querySelector("#todayCount"),
+      list: document.querySelector("#contactList"),
+      newButton: document.querySelector("#newContactButton"),
+      formDialog: document.querySelector("#formDialog"),
+      deleteDialog: document.querySelector("#deleteDialog"),
+      form: document.querySelector("#contactForm"),
+      formTitle: document.querySelector("#formTitle"),
+      formError: document.querySelector("#formError"),
+      contactId: document.querySelector("#contactId"),
+      dateInput: document.querySelector("#dateInput"),
+      nameInput: document.querySelector("#nameInput"),
+      typeInput: document.querySelector("#typeInput"),
+      detailInput: document.querySelector("#detailInput"),
+      noteInput: document.querySelector("#noteInput"),
+      cancelFormButton: document.querySelector("#cancelFormButton"),
+      filterOpenOnly: document.querySelector("#filterOpenOnly"),
+      filterFutureOnly: document.querySelector("#filterFutureOnly"),
+      filterType: document.querySelector("#filterType"),
+      filterName: document.querySelector("#filterName"),
+      exportButton: document.querySelector("#exportButton"),
+      importFile: document.querySelector("#importFile"),
+      deleteText: document.querySelector("#deleteText"),
+      cancelDeleteButton: document.querySelector("#cancelDeleteButton"),
+      confirmDeleteButton: document.querySelector("#confirmDeleteButton")
+    };
+
+    function todayString() {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = String(now.getMonth() + 1).padStart(2, "0");
+      const day = String(now.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    }
+
+    async function supabaseRequest(path = "", options = {}) {
+      const response = await fetch(`${CONTACTS_API}${path}`, {
+        ...options,
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          "Content-Type": "application/json",
+          Prefer: "return=representation",
+          ...(options.headers ?? {})
+        }
+      });
+
+      if (!response.ok) {
+        const message = await response.text();
+        throw new Error(message || `Supabase request failed: ${response.status}`);
+      }
+
+      if (response.status === 204) return [];
+      return response.json();
+    }
+
+    async function loadContacts() {
+      try {
+        elements.list.innerHTML = `<div class="empty-state"><p>読み込み中です</p></div>`;
+        contacts = await supabaseRequest("?select=*&order=date.asc,created_at.asc");
+      } catch (error) {
+        contacts = [];
+        elements.list.innerHTML = `<div class="empty-state"><p>データを読み込めませんでした。Supabaseの設定を確認してください。</p></div>`;
+        console.error(error);
+        return;
+      }
+      renderList();
+    }
+
+    async function createContact(data) {
+      const [created] = await supabaseRequest("", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+      contacts = [...contacts, created];
+    }
+
+    async function updateContact(id, data) {
+      const [updated] = await supabaseRequest(`?id=eq.${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify(data)
+      });
+      contacts = contacts.map((contact) => contact.id === id ? updated : contact);
+    }
+
+    async function deleteContact(id) {
+      await supabaseRequest(`?id=eq.${encodeURIComponent(id)}`, {
+        method: "DELETE"
+      });
+      contacts = contacts.filter((contact) => contact.id !== id);
+    }
+
+    function makeId() {
+      if (crypto?.randomUUID) return crypto.randomUUID();
+      return `contact-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    function formatDate(dateValue) {
+      if (!dateValue) return "日付未設定";
+      const [year, month, day] = dateValue.split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      if (Number.isNaN(date.getTime())) return dateValue;
+      return `${month}月${day}日(${dayLabels[date.getDay()]})`;
+    }
+
+    function formatDateTime(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "";
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      const hour = String(date.getHours()).padStart(2, "0");
+      const minute = String(date.getMinutes()).padStart(2, "0");
+      return `${month}/${day} ${hour}:${minute}`;
+    }
+
+    function getFilteredContacts() {
+      const openOnly = elements.filterOpenOnly.checked;
+      const futureOnly = elements.filterFutureOnly.checked;
+      const selectedType = elements.filterType.value;
+      const nameQuery = elements.filterName.value.trim().toLowerCase();
+      const today = todayString();
+
+      return contacts
+        .filter((contact) => !openOnly || !contact.done)
+        .filter((contact) => !futureOnly || contact.date >= today)
+        .filter((contact) => !selectedType || contact.change_type === selectedType)
+        .filter((contact) => !nameQuery || String(contact.user_name ?? "").toLowerCase().includes(nameQuery))
+        .sort((a, b) => {
+          const dateCompare = String(a.date).localeCompare(String(b.date));
+          if (dateCompare !== 0) return dateCompare;
+          return String(a.created_at ?? "").localeCompare(String(b.created_at ?? ""));
+        });
+    }
+
+    function groupByDate(items) {
+      return items.reduce((groups, contact) => {
+        const date = contact.date || "未設定";
+        if (!groups[date]) groups[date] = [];
+        groups[date].push(contact);
+        return groups;
+      }, {});
+    }
+
+    function renderSummary() {
+      const today = todayString();
+      elements.openCount.textContent = contacts.filter((contact) => !contact.done).length;
+      elements.todayCount.textContent = contacts.filter((contact) => contact.date === today).length;
+    }
+
+    function renderList() {
+      renderSummary();
+      const filtered = getFilteredContacts();
+      if (filtered.length === 0) {
+        elements.list.innerHTML = `
+          <div class="empty-state">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M11 20A7 7 0 0 1 4 13c0-6 8-9 16-9 0 8-3 16-9 16Z"></path>
+              <path d="M4 13c3 0 7 0 12-5"></path>
+            </svg>
+            <p>まだ連絡はありません</p>
+          </div>
+        `;
+        return;
+      }
+
+      const groups = groupByDate(filtered);
+      elements.list.innerHTML = Object.entries(groups).map(([date, items]) => `
+        <section class="date-group">
+          <div class="date-header">
+            <h2>${escapeHtml(formatDate(date))}</h2>
+            <span>${items.length}件</span>
+          </div>
+          <div class="contact-grid">
+            ${items.map(renderContactCard).join("")}
+          </div>
+        </section>
+      `).join("");
+    }
+
+    function renderContactCard(contact) {
+      const meta = typeMeta[contact.change_type] ?? { label: "未設定", badgeClass: "", placeholder: "" };
+      const note = contact.note ? `<p class="note">備考: ${escapeHtml(contact.note)}</p>` : "";
+      const doneText = contact.done ? `<span class="done-text">対応済み</span>` : `<span class="meta">未対応</span>`;
+
+      return `
+        <article class="contact-card ${contact.done ? "done" : ""}" data-id="${escapeHtml(contact.id)}">
+          <div class="contact-top">
+            <div class="contact-title">
+              <h3>${escapeHtml(contact.user_name)}</h3>
+              <span class="badge ${meta.badgeClass}">${escapeHtml(meta.label)}</span>
+            </div>
+            <div class="contact-actions">
+              <button class="btn btn-ghost icon-btn" type="button" title="編集" aria-label="編集" data-action="edit" data-id="${escapeHtml(contact.id)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+                </svg>
+              </button>
+              <button class="btn btn-ghost icon-btn" type="button" title="削除" aria-label="削除" data-action="delete" data-id="${escapeHtml(contact.id)}">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <p class="detail">${escapeHtml(contact.change_detail || "詳細未入力")}</p>
+          ${note}
+          <div class="meta">入力日時: ${escapeHtml(formatDateTime(contact.created_at))}</div>
+          <div class="done-row">
+            <label>
+              <input type="checkbox" data-action="toggle" data-id="${escapeHtml(contact.id)}" ${contact.done ? "checked" : ""}>
+              確認・対応済み
+            </label>
+            ${doneText}
+          </div>
+        </article>
+      `;
+    }
+
+    function openForm(contact = null) {
+      elements.formError.classList.remove("show");
+      elements.formError.textContent = "";
+      elements.formTitle.textContent = contact ? "連絡を編集" : "新規連絡";
+      elements.contactId.value = contact?.id ?? "";
+      elements.dateInput.value = contact?.date ?? todayString();
+      elements.nameInput.value = contact?.user_name ?? "";
+      elements.typeInput.value = contact?.change_type ?? "";
+      elements.detailInput.value = contact?.change_detail ?? "";
+      elements.noteInput.value = contact?.note ?? "";
+      updateDetailPlaceholder();
+      elements.formDialog.classList.add("open");
+      elements.nameInput.focus();
+    }
+
+    function closeForm() {
+      elements.formDialog.classList.remove("open");
+      elements.form.reset();
+    }
+
+    function updateDetailPlaceholder() {
+      const selectedType = elements.typeInput.value;
+      elements.detailInput.placeholder = typeMeta[selectedType]?.placeholder ?? "変更内容を入力してください";
+    }
+
+    function validateForm(data) {
+      if (!data.date) return "利用日を入力してください。";
+      if (!data.user_name) return "利用者名を入力してください。";
+      if (!data.change_type) return "変更種別を選択してください。";
+      return "";
+    }
+
+    async function handleSubmit(event) {
+      event.preventDefault();
+      const id = elements.contactId.value;
+      const data = {
+        date: elements.dateInput.value,
+        user_name: elements.nameInput.value.trim(),
+        change_type: elements.typeInput.value,
+        change_detail: elements.detailInput.value.trim(),
+        note: elements.noteInput.value.trim()
+      };
+      const error = validateForm(data);
+      if (error) {
+        elements.formError.textContent = error;
+        elements.formError.classList.add("show");
+        return;
+      }
+
+      try {
+        if (id) {
+          await updateContact(id, data);
+        } else {
+          await createContact({
+            ...data,
+            done: false,
+            created_at: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        elements.formError.textContent = "保存できませんでした。Supabaseの接続設定を確認してください。";
+        elements.formError.classList.add("show");
+        console.error(error);
+        return;
+      }
+
+      closeForm();
+      renderList();
+    }
+
+    function openDelete(contact) {
+      contactToDelete = contact;
+      elements.deleteText.textContent = `${contact.user_name}さんの連絡を削除します。この操作は取り消せません。`;
+      elements.deleteDialog.classList.add("open");
+    }
+
+    function closeDelete() {
+      contactToDelete = null;
+      elements.deleteDialog.classList.remove("open");
+    }
+
+    async function handleListClick(event) {
+      const target = event.target.closest("[data-action]");
+      if (!target) return;
+      const id = target.dataset.id;
+      const action = target.dataset.action;
+      const contact = contacts.find((item) => item.id === id);
+      if (!contact) return;
+
+      if (action === "edit") openForm(contact);
+      if (action === "delete") openDelete(contact);
+      if (action === "toggle") {
+        if (event.type !== "change") return;
+        try {
+          await updateContact(id, { done: target.checked });
+          renderList();
+        } catch (error) {
+          target.checked = !target.checked;
+          alert("対応済みの更新に失敗しました。");
+          console.error(error);
+        }
+      }
+    }
+
+    function exportData() {
+      const payload = {
+        app: "利用変更連絡ノート",
+        exported_at: new Date().toISOString(),
+        contacts
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `利用変更連絡ノート-${todayString()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.addEventListener("load", async () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          const importedContacts = Array.isArray(parsed) ? parsed : parsed.contacts;
+          if (!Array.isArray(importedContacts)) throw new Error("Invalid data");
+          const normalizedContacts = importedContacts.map((contact) => ({
+            date: contact.date || todayString(),
+            user_name: contact.user_name || "",
+            change_type: contact.change_type || "",
+            change_detail: contact.change_detail || "",
+            note: contact.note || "",
+            done: Boolean(contact.done),
+            created_at: contact.created_at || new Date().toISOString()
+          }));
+          await supabaseRequest("", {
+            method: "POST",
+            body: JSON.stringify(normalizedContacts)
+          });
+          await loadContacts();
+          renderList();
+        } catch (error) {
+          alert("インポートできませんでした。JSONファイルの内容を確認してください。");
+        } finally {
+          elements.importFile.value = "";
+        }
+      });
+      reader.readAsText(file);
+    }
+
+    elements.newButton.addEventListener("click", () => openForm());
+    elements.cancelFormButton.addEventListener("click", closeForm);
+    elements.form.addEventListener("submit", handleSubmit);
+    elements.typeInput.addEventListener("change", updateDetailPlaceholder);
+    elements.list.addEventListener("click", handleListClick);
+    elements.list.addEventListener("change", handleListClick);
+    elements.cancelDeleteButton.addEventListener("click", closeDelete);
+    elements.confirmDeleteButton.addEventListener("click", () => {
+      if (contactToDelete) {
+        deleteContact(contactToDelete.id)
+          .then(() => renderList())
+          .catch((error) => {
+            alert("削除できませんでした。");
+            console.error(error);
+          });
+      }
+      closeDelete();
+    });
+    elements.formDialog.addEventListener("click", (event) => {
+      if (event.target === elements.formDialog) closeForm();
+    });
+    elements.deleteDialog.addEventListener("click", (event) => {
+      if (event.target === elements.deleteDialog) closeDelete();
+    });
+    elements.filterOpenOnly.addEventListener("change", renderList);
+    elements.filterFutureOnly.addEventListener("change", renderList);
+    elements.filterType.addEventListener("change", renderList);
+    elements.filterName.addEventListener("input", renderList);
+    elements.exportButton.addEventListener("click", exportData);
+    elements.importFile.addEventListener("change", importData);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeForm();
+        closeDelete();
+      }
+    });
+
+    loadContacts();
+  </script>
+</body>
+</html>
