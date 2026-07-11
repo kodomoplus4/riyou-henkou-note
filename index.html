@@ -337,8 +337,9 @@
     }
 
     .contact-card.done {
-      background: rgba(236, 253, 245, 0.42);
-      border-color: var(--emerald-200);
+      background: #d1fae5;
+      border-color: #34d399;
+      box-shadow: 0 12px 30px rgba(6, 95, 70, 0.14);
     }
 
     .contact-top {
@@ -421,7 +422,7 @@
     .done-row {
       margin-top: 14px;
       padding-top: 14px;
-      border-top: 1px solid var(--amber-100);
+      border-top: 1px solid rgba(52, 211, 153, 0.35);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -439,6 +440,16 @@
     .done-text {
       color: var(--emerald-800);
       font-size: 13px;
+      font-weight: 700;
+    }
+
+    .staff-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--stone-500);
+      font-size: 12px;
+      margin-left: 10px;
     }
 
     .empty-state {
@@ -743,6 +754,10 @@
           <div class="suggestions" id="userNameSuggestions" role="listbox"></div>
         </div>
         <div class="field">
+          <label for="staffInput">入力職員</label>
+          <input id="staffInput" type="text" autocomplete="off" placeholder="職員名を入力">
+        </div>
+        <div class="field">
           <label for="typeInput">変更種別</label>
           <select id="typeInput" required>
             <option value="">選択してください</option>
@@ -826,6 +841,7 @@
       contactId: document.querySelector("#contactId"),
       dateInput: document.querySelector("#dateInput"),
       nameInput: document.querySelector("#nameInput"),
+      staffInput: document.querySelector("#staffInput"),
       typeInput: document.querySelector("#typeInput"),
       detailInput: document.querySelector("#detailInput"),
       noteInput: document.querySelector("#noteInput"),
@@ -922,12 +938,15 @@
       }
     }
 
-    async function loadContacts() {
+    async function loadContacts(options = {}) {
       try {
-        elements.list.innerHTML = `<div class="empty-state"><p>読み込み中です</p></div>`;
+        if (!options.silent) {
+          elements.list.innerHTML = `<div class="empty-state"><p>読み込み中です</p></div>`;
+        }
         await loadStudents();
         contacts = await supabaseRequest("?select=*&order=date.asc,created_at.asc");
       } catch (error) {
+        if (options.silent) return;
         contacts = [];
         elements.list.innerHTML = `<div class="empty-state"><p>データを読み込めませんでした。Supabaseの設定を確認してください。</p></div>`;
         console.error(error);
@@ -1173,6 +1192,7 @@
     function renderContactCard(contact) {
       const meta = typeMeta[contact.change_type] ?? { label: "未設定", badgeClass: "", placeholder: "" };
       const note = contact.note ? `<p class="note">備考: ${escapeHtml(contact.note)}</p>` : "";
+      const staff = contact.staff_name ? `<span class="staff-meta">入力: ${escapeHtml(contact.staff_name)}</span>` : "";
       const doneText = contact.done ? `<span class="done-text">対応済み</span>` : `<span class="meta">未対応</span>`;
 
       return `
@@ -1197,7 +1217,7 @@
           </div>
           <p class="detail">${escapeHtml(contact.change_detail || "詳細未入力")}</p>
           ${note}
-          <div class="meta">入力日時: ${escapeHtml(formatDateTime(contact.created_at))}</div>
+          <div class="meta">入力日時: ${escapeHtml(formatDateTime(contact.created_at))}${staff}</div>
           <div class="done-row">
             <label>
               <input type="checkbox" data-action="toggle" data-id="${escapeHtml(contact.id)}" ${contact.done ? "checked" : ""}>
@@ -1216,6 +1236,7 @@
       elements.contactId.value = contact?.id ?? "";
       elements.dateInput.value = contact?.date ?? todayString();
       elements.nameInput.value = contact?.user_name ?? "";
+      elements.staffInput.value = contact?.staff_name ?? "";
       elements.typeInput.value = contact?.change_type ?? "";
       elements.detailInput.value = contact?.change_detail ?? "";
       elements.noteInput.value = contact?.note ?? "";
@@ -1247,6 +1268,7 @@
       const data = {
         date: elements.dateInput.value,
         user_name: elements.nameInput.value.trim(),
+        staff_name: elements.staffInput.value.trim(),
         change_type: elements.typeInput.value,
         change_detail: elements.detailInput.value.trim(),
         note: elements.noteInput.value.trim()
@@ -1343,6 +1365,7 @@
             change_type: contact.change_type || "",
             change_detail: contact.change_detail || "",
             note: contact.note || "",
+            staff_name: contact.staff_name || "",
             done: Boolean(contact.done),
             created_at: contact.created_at || new Date().toISOString()
           }));
@@ -1417,6 +1440,7 @@
     requestAdminUnlock().then(() => {
       applyAdminVisibility();
       loadContacts();
+      setInterval(() => loadContacts({ silent: true }), 15000);
     });
   </script>
 </body>
