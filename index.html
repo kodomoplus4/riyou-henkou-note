@@ -671,7 +671,7 @@
       </div>
     </section>
 
-    <div class="tools-row" aria-label="データ操作">
+    <div class="tools-row admin-only hidden" aria-label="データ操作">
       <button class="btn btn-secondary" id="exportButton" type="button">エクスポート</button>
       <label class="btn btn-secondary" for="importFile">インポート</label>
       <input class="hidden" id="importFile" type="file" accept="application/json,.json">
@@ -692,7 +692,8 @@
         </div>
         <div class="field">
           <label for="nameInput">利用者名</label>
-          <input id="nameInput" type="text" autocomplete="off" placeholder="例: 田中ひなた" required>
+          <input id="nameInput" type="text" autocomplete="off" list="userNameCandidates" placeholder="例: 田中ひなた" required>
+          <datalist id="userNameCandidates"></datalist>
         </div>
         <div class="field">
           <label for="typeInput">変更種別</label>
@@ -778,6 +779,7 @@
       typeInput: document.querySelector("#typeInput"),
       detailInput: document.querySelector("#detailInput"),
       noteInput: document.querySelector("#noteInput"),
+      userNameCandidates: document.querySelector("#userNameCandidates"),
       cancelFormButton: document.querySelector("#cancelFormButton"),
       filterOpenOnly: document.querySelector("#filterOpenOnly"),
       filterFutureOnly: document.querySelector("#filterFutureOnly"),
@@ -789,6 +791,40 @@
       cancelDeleteButton: document.querySelector("#cancelDeleteButton"),
       confirmDeleteButton: document.querySelector("#confirmDeleteButton")
     };
+
+    const adminRequested = new URLSearchParams(location.search).get("admin") === "1";
+    const ADMIN_SESSION_KEY = "after-school-change-note.admin-unlocked";
+    const ADMIN_PASSCODE_HASH = "d7cae490f406523669ae288a962be2faa22ae677bc4f3c4714b05a5f6d094c9d";
+    let isAdminUnlocked = sessionStorage.getItem(ADMIN_SESSION_KEY) === "true";
+
+    async function sha256(value) {
+      const data = new TextEncoder().encode(value);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      return [...new Uint8Array(hashBuffer)]
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+    }
+
+    async function requestAdminUnlock() {
+      if (!adminRequested || isAdminUnlocked) return;
+
+      const passcode = window.prompt("管理者用パスコードを入力してください。");
+      if (!passcode) return;
+
+      const inputHash = await sha256(passcode);
+      if (inputHash === ADMIN_PASSCODE_HASH) {
+        isAdminUnlocked = true;
+        sessionStorage.setItem(ADMIN_SESSION_KEY, "true");
+      } else {
+        alert("パスコードが違います。");
+      }
+    }
+
+    function applyAdminVisibility() {
+      document.querySelectorAll(".admin-only").forEach((element) => {
+        element.classList.toggle("hidden", !isAdminUnlocked);
+      });
+    }
 
     function todayString() {
       const now = new Date();
@@ -922,8 +958,21 @@
       elements.todayCount.textContent = contacts.filter((contact) => contact.date === today).length;
     }
 
+    function renderUserNameCandidates() {
+      const names = [...new Set(
+        contacts
+          .map((contact) => String(contact.user_name ?? "").trim())
+          .filter(Boolean)
+      )].sort((a, b) => a.localeCompare(b, "ja"));
+
+      elements.userNameCandidates.innerHTML = names
+        .map((name) => `<option value="${escapeHtml(name)}"></option>`)
+        .join("");
+    }
+
     function renderList() {
       renderSummary();
+      renderUserNameCandidates();
       const filtered = getFilteredContacts();
       if (filtered.length === 0) {
         elements.list.innerHTML = `
@@ -1180,7 +1229,10 @@
       }
     });
 
-    loadContacts();
+    requestAdminUnlock().then(() => {
+      applyAdminVisibility();
+      loadContacts();
+    });
   </script>
 </body>
 </html>
