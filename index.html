@@ -810,10 +810,10 @@
           <label for="dateInput">利用日</label>
           <div class="date-entry">
             <input id="dateInput" type="date" required>
-            <button class="btn btn-secondary" id="addDateButton" type="button">翌日を追加</button>
+            <button class="btn btn-secondary" id="addDateButton" type="button">選択日を追加</button>
           </div>
           <div class="date-chips" id="selectedDateList"></div>
-          <div class="form-help" id="dateHelp">複数日ある場合は、「翌日を追加」を押してください。離れた日付は利用日を選び直してから追加できます。</div>
+          <div class="form-help" id="dateHelp">複数日ある場合は、利用日を選んで「選択日を追加」を押してください。</div>
         </div>
         <div class="field">
           <label for="nameInput">利用者名</label>
@@ -1075,17 +1075,6 @@
       return [...new Set(dates.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
     }
 
-    function addDays(dateValue, days) {
-      const [year, month, day] = String(dateValue).split("-").map(Number);
-      const date = new Date(year, month - 1, day);
-      if (Number.isNaN(date.getTime())) return todayString();
-      date.setDate(date.getDate() + days);
-      const nextYear = date.getFullYear();
-      const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
-      const nextDay = String(date.getDate()).padStart(2, "0");
-      return `${nextYear}-${nextMonth}-${nextDay}`;
-    }
-
     function renderSelectedDates() {
       selectedDates = normalizeDateList(selectedDates);
       elements.selectedDateList.innerHTML = selectedDates
@@ -1102,15 +1091,12 @@
       if (!date) return;
       const normalizedDates = normalizeDateList(selectedDates);
       if (normalizedDates.includes(date)) {
-        let nextDate = addDays(normalizedDates.at(-1) || date, 1);
-        while (normalizedDates.includes(nextDate)) {
-          nextDate = addDays(nextDate, 1);
-        }
-        date = nextDate;
+        elements.dateHelp.textContent = `${formatDate(date)}はすでに追加されています。別の日付を選んで追加してください。`;
+        return;
       }
-      elements.dateInput.value = date;
       selectedDates = normalizeDateList([...selectedDates, date]);
       renderSelectedDates();
+      elements.dateHelp.textContent = `${formatDate(date)}を追加しました。さらに追加する場合は、別の日付を選んで「選択日を追加」を押してください。`;
     }
 
     function removeSelectedDate(date) {
@@ -1360,8 +1346,8 @@
       renderSelectedDates();
       elements.addDateButton.classList.remove("hidden");
       elements.dateHelp.textContent = contact
-        ? "複数日に反映する場合は、日付を選んで「日付を追加」を押してください。追加した日付は同じ内容の新しい連絡として保存されます。"
-        : "複数日ある場合は、日付を選んで「日付を追加」を押してください。";
+        ? "複数日に反映する場合は、利用日を選んで「選択日を追加」を押してください。追加した日付は同じ内容の新しい連絡として保存されます。"
+        : "複数日ある場合は、利用日を選んで「選択日を追加」を押してください。";
       elements.nameInput.value = contact?.user_name ?? "";
       elements.staffInput.value = contact?.staff_name ?? "";
       elements.typeInput.value = contact?.change_type ?? "";
