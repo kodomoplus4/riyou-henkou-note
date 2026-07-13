@@ -1101,10 +1101,10 @@
 
     function removeSelectedDate(date) {
       selectedDates = selectedDates.filter((item) => item !== date);
-      if (selectedDates.length === 0) {
-        selectedDates = [elements.dateInput.value || todayString()];
-      }
       renderSelectedDates();
+      elements.dateHelp.textContent = selectedDates.length
+        ? `${formatDate(date)}を選択日から外しました。`
+        : "選択日がありません。保存すると、現在の利用日だけで登録されます。";
     }
 
     function formatDateTime(value) {
@@ -1342,12 +1342,12 @@
       elements.formTitle.textContent = contact ? "連絡を編集" : "新規連絡";
       elements.contactId.value = contact?.id ?? "";
       elements.dateInput.value = contact?.date ?? todayString();
-      selectedDates = [elements.dateInput.value];
+      selectedDates = contact ? [elements.dateInput.value] : [];
       renderSelectedDates();
       elements.addDateButton.classList.remove("hidden");
       elements.dateHelp.textContent = contact
-        ? "複数日に反映する場合は、利用日を選んで「選択日を追加」を押してください。追加した日付は同じ内容の新しい連絡として保存されます。"
-        : "複数日ある場合は、利用日を選んで「選択日を追加」を押してください。";
+        ? "別の日にも同じ内容を反映する場合は、利用日を変更すると選択日に追加されます。"
+        : "複数日ある場合は、利用日を変更するか「選択日を追加」を押してください。";
       elements.nameInput.value = contact?.user_name ?? "";
       elements.staffInput.value = contact?.staff_name ?? "";
       elements.typeInput.value = contact?.change_type ?? "";
@@ -1516,10 +1516,7 @@
     elements.cancelFormButton.addEventListener("click", closeForm);
     elements.form.addEventListener("submit", handleSubmit);
     elements.dateInput.addEventListener("change", () => {
-      if (selectedDates.length <= 1) {
-        selectedDates = [elements.dateInput.value];
-      }
-      renderSelectedDates();
+      addSelectedDate(elements.dateInput.value);
     });
     elements.addDateButton.addEventListener("click", () => addSelectedDate(elements.dateInput.value));
     elements.selectedDateList.addEventListener("click", (event) => {
