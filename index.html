@@ -1338,9 +1338,9 @@
       elements.dateInput.value = contact?.date ?? todayString();
       selectedDates = [elements.dateInput.value];
       renderSelectedDates();
-      elements.addDateButton.classList.toggle("hidden", Boolean(contact));
+      elements.addDateButton.classList.remove("hidden");
       elements.dateHelp.textContent = contact
-        ? "編集時はこの連絡の利用日のみ変更できます。"
+        ? "複数日に反映する場合は、日付を選んで「日付を追加」を押してください。追加した日付は同じ内容の新しい連絡として保存されます。"
         : "複数日ある場合は、日付を選んで「日付を追加」を押してください。";
       elements.nameInput.value = contact?.user_name ?? "";
       elements.staffInput.value = contact?.staff_name ?? "";
@@ -1374,7 +1374,7 @@
     async function handleSubmit(event) {
       event.preventDefault();
       const id = elements.contactId.value;
-      const datesForSave = id ? [elements.dateInput.value] : normalizeDateList(selectedDates.length ? selectedDates : [elements.dateInput.value]);
+      const datesForSave = normalizeDateList(selectedDates.length ? selectedDates : [elements.dateInput.value]);
       const data = {
         date: datesForSave[0],
         user_name: elements.nameInput.value.trim(),
@@ -1391,10 +1391,18 @@
       }
 
       try {
+        const createdAt = new Date().toISOString();
         if (id) {
           await updateContact(id, data);
+          for (const date of datesForSave.slice(1)) {
+            await createContact({
+              ...data,
+              date,
+              done: false,
+              created_at: createdAt
+            });
+          }
         } else {
-          const createdAt = new Date().toISOString();
           for (const date of datesForSave) {
             await createContact({
               ...data,
@@ -1502,9 +1510,7 @@
     elements.cancelFormButton.addEventListener("click", closeForm);
     elements.form.addEventListener("submit", handleSubmit);
     elements.dateInput.addEventListener("change", () => {
-      if (elements.contactId.value) {
-        selectedDates = [elements.dateInput.value];
-      } else if (selectedDates.length <= 1) {
+      if (selectedDates.length <= 1) {
         selectedDates = [elements.dateInput.value];
       }
       renderSelectedDates();
