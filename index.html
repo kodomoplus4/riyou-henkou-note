@@ -1075,6 +1075,17 @@
       return [...new Set(dates.filter(Boolean))].sort((a, b) => String(a).localeCompare(String(b)));
     }
 
+    function addDays(dateValue, days) {
+      const [year, month, day] = String(dateValue).split("-").map(Number);
+      const date = new Date(year, month - 1, day);
+      if (Number.isNaN(date.getTime())) return todayString();
+      date.setDate(date.getDate() + days);
+      const nextYear = date.getFullYear();
+      const nextMonth = String(date.getMonth() + 1).padStart(2, "0");
+      const nextDay = String(date.getDate()).padStart(2, "0");
+      return `${nextYear}-${nextMonth}-${nextDay}`;
+    }
+
     function renderSelectedDates() {
       selectedDates = normalizeDateList(selectedDates);
       elements.selectedDateList.innerHTML = selectedDates
@@ -1089,6 +1100,14 @@
 
     function addSelectedDate(date) {
       if (!date) return;
+      if (selectedDates.includes(date)) {
+        let nextDate = addDays(date, 1);
+        while (selectedDates.includes(nextDate)) {
+          nextDate = addDays(nextDate, 1);
+        }
+        elements.dateInput.value = nextDate;
+        date = nextDate;
+      }
       selectedDates = normalizeDateList([...selectedDates, date]);
       renderSelectedDates();
     }
